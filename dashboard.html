@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Mobile Shop Pro</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="logo">
+        <span class="logo-icon">📱</span>
+        <strong>Mobile</strong>ShopPro
+      </div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li id="userGreeting" style="color: var(--text);"></li>
+        <li><a href="#" id="logoutBtn" class="btn-nav">Logout</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Dashboard -->
+  <section class="dashboard">
+    <div class="container">
+      <h1>📊 User Dashboard</h1>
+
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">🔑</div>
+          <div class="stat-content">
+            <span class="stat-label">Active Licenses</span>
+            <span class="stat-value" id="activeLicenses">0</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📅</div>
+          <div class="stat-content">
+            <span class="stat-label">Days Remaining</span>
+            <span class="stat-value" id="daysRemaining">--</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-content">
+            <span class="stat-label">Total Spent</span>
+            <span class="stat-value" id="totalSpent">Rs 0</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📦</div>
+          <div class="stat-content">
+            <span class="stat-label">Transactions</span>
+            <span class="stat-value" id="totalTransactions">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- License Cards -->
+      <div class="section">
+        <h2>🎫 Your Licenses</h2>
+        <div class="licenses-list" id="licensesList">
+          <p class="loading">Loading licenses...</p>
+        </div>
+      </div>
+
+      <!-- Transaction History -->
+      <div class="section">
+        <h2>📝 Transaction History</h2>
+        <div class="transactions-table" id="transactionsTable">
+          <p class="loading">Loading transactions...</p>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="section">
+        <h2>⚡ Quick Actions</h2>
+        <div class="actions-grid">
+          <a href="pricing.html" class="action-card">
+            <span class="action-icon">➕</span>
+            <span>Buy License</span>
+          </a>
+          <a href="activate.html" class="action-card">
+            <span class="action-icon">🔓</span>
+            <span>Activate License</span>
+          </a>
+          <a href="partners.html" class="action-card">
+            <span class="action-icon">🤝</span>
+            <span>Become Partner</span>
+          </a>
+          <button onclick="Dashboard.downloadApp()" class="action-card">
+            <span class="action-icon">📥</span>
+            <span>Download Desktop App</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Account Settings -->
+      <div class="section">
+        <h2>⚙️ Account Settings</h2>
+        <div class="settings-form">
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="settingEmail" class="input-field" disabled>
+          </div>
+          <div class="form-group">
+            <label>Shop Name</label>
+            <input type="text" id="settingShopName" class="input-field" placeholder="Enter your shop name">
+          </div>
+          <button onclick="Dashboard.updateSettings()" class="btn btn-primary">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const Dashboard = {
+      async loadDashboard() {
+        const user = Auth.getCurrentUser();
+        if (!user) {
+          window.location.href = 'index.html';
+          return;
+        }
+
+        document.getElementById('userGreeting').textContent = `Hello, ${user.name}!`;
+        document.getElementById('settingEmail').value = user.email;
+        document.getElementById('settingShopName').value = user.shopName || '';
+
+        // Load licenses
+        try {
+          const licenses = await API.getUserLicenses(user.id);
+          this.displayLicenses(licenses);
+        } catch (err) {
+          console.error('Error loading licenses:', err);
+        }
+
+        // Load transactions
+        try {
+          const transactions = await API.getUserTransactions(user.id);
+          this.displayTransactions(transactions);
+        } catch (err) {
+          console.error('Error loading transactions:', err);
+        }
+      },
+
+      displayLicenses(licenses) {
+        const container = document.getElementById('licensesList');
+        if (!licenses || licenses.length === 0) {
+          container.innerHTML = '<p class="empty">No active licenses. <a href="pricing.html">Get started</a></p>';
+          return;
+        }
+
+        let html = '';
+        let totalDays = 0;
+
+        licenses.forEach(lic => {
+          const daysLeft = Math.ceil((new Date(lic.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+          totalDays += daysLeft;
+
+          html += `
+            <div class="license-card">
+              <div class="license-header">
+                <h3>${lic.plan}</h3>
+                <span class="license-badge ${daysLeft < 7 ? 'expiring' : 'active'}">
+                  ${daysLeft > 0 ? 'Active' : 'Expired'}
+                </span>
+              </div>
+              <div class="license-details">
+                <div class="detail">
+                  <span>License Key:</span>
+                  <code>${lic.key}</code>
+                </div>
+                <div class="detail">
+                  <span>Activated:</span>
+                  <span>${new Date(lic.activated).toLocaleDateString()}</span>
+                </div>
+                <div class="detail">
+                  <span>Expires:</span>
+                  <span>${new Date(lic.expiry).toLocaleDateString()}</span>
+                </div>
+                <div class="detail">
+                  <span>Days Remaining:</span>
+                  <span class="days-badge">${daysLeft > 0 ? daysLeft : 'Expired'}</span>
+                </div>
+              </div>
+              <button onclick="Dashboard.renewLicense('${lic.key}')" class="btn btn-secondary btn-small">Renew License</button>
+            </div>
+          `;
+        });
+
+        document.getElementById('activeLicenses').textContent = licenses.length;
+        document.getElementById('daysRemaining').textContent = totalDays > 0 ? totalDays : 'Expired';
+        container.innerHTML = html;
+      },
+
+      displayTransactions(transactions) {
+        const container = document.getElementById('transactionsTable');
+        if (!transactions || transactions.length === 0) {
+          container.innerHTML = '<p class="empty">No transactions yet</p>';
+          return;
+        }
+
+        let totalSpent = 0;
+        let html = '<table class="table"><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead><tbody>';
+
+        transactions.forEach(txn => {
+          totalSpent += txn.amount;
+          html += `
+            <tr>
+              <td>${new Date(txn.date).toLocaleDateString()}</td>
+              <td>${txn.description}</td>
+              <td>Rs ${txn.amount?.toLocaleString()}</td>
+              <td><span class="status-badge ${txn.status}">${txn.status}</span></td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('totalSpent').textContent = `Rs ${totalSpent.toLocaleString()}`;
+        document.getElementById('totalTransactions').textContent = transactions.length;
+        container.innerHTML = html;
+      },
+
+      renewLicense(key) {
+        window.location.href = `pricing.html?renew=${key}`;
+      },
+
+      downloadApp() {
+        alert('Desktop app download link will be provided. Contact support for immediate access.');
+        window.location.href = 'mailto:lovelykamkhani@gmail.com?subject=Download%20Desktop%20App';
+      },
+
+      updateSettings() {
+        const shopName = document.getElementById('settingShopName').value;
+        const user = Auth.getCurrentUser();
+        
+        if (!shopName) {
+          alert('Please enter a shop name');
+          return;
+        }
+
+        // Update in local storage
+        user.shopName = shopName;
+        sessionStorage.setItem('user', JSON.stringify(user));
+        alert('Settings updated successfully!');
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      Dashboard.loadDashboard();
+
+      document.getElementById('logoutBtn').onclick = (e) => {
+        e.preventDefault();
+        Auth.logout();
+        window.location.href = 'index.html';
+      };
+    });
+  </script>
+</body>
+</html>

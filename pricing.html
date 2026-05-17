@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing & Payment - Mobile Shop Pro</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="logo">
+        <span class="logo-icon">📱</span>
+        <strong>Mobile</strong>ShopPro
+      </div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="activate.html">Activate License</a></li>
+        <li><a href="dashboard.html" class="btn-nav" id="dashboardLink" style="display:none;">Dashboard</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Pricing Section -->
+  <section class="pricing-page">
+    <div class="container">
+      <h1>Choose Your Plan</h1>
+      <p class="subtitle">Flexible pricing for shops of all sizes</p>
+
+      <!-- Coupon Section -->
+      <div class="coupon-section">
+        <input type="text" id="couponCode" placeholder="Have a coupon code? Enter it here" class="input-coupon">
+        <button onclick="Pricing.validateCoupon()" class="btn btn-secondary">Apply Coupon</button>
+        <div id="couponMessage"></div>
+      </div>
+
+      <!-- Pricing Cards -->
+      <div class="pricing-grid" id="pricingGrid">
+        <div class="loading-spinner"></div>
+      </div>
+
+      <!-- Payment Modal -->
+      <div id="paymentModal" class="modal">
+        <div class="modal-content">
+          <span class="modal-close">&times;</span>
+          <h2>Complete Your Payment</h2>
+          
+          <div class="payment-info">
+            <div class="info-row">
+              <span>Plan:</span>
+              <strong id="planName"></strong>
+            </div>
+            <div class="info-row">
+              <span>Price:</span>
+              <strong>Rs <span id="planPrice"></span></strong>
+            </div>
+            <div class="info-row" id="discountRow" style="display:none;">
+              <span>Discount:</span>
+              <strong style="color: var(--green);" id="discountAmount"></strong>
+            </div>
+            <div class="info-row total">
+              <span>Total:</span>
+              <strong>Rs <span id="totalPrice"></span></strong>
+            </div>
+          </div>
+
+          <div class="nayapay-section">
+            <h3>🚀 NayaPay Payment</h3>
+            <p>Quick, secure payment via NayaPay</p>
+            
+            <form id="paymentForm">
+              <input type="text" id="buyerName" placeholder="Full Name" required class="input-field">
+              <input type="email" id="buyerEmail" placeholder="Email" required class="input-field">
+              <input type="tel" id="buyerPhone" placeholder="Phone (e.g., 03001234567)" required class="input-field">
+              <input type="hidden" id="selectedPlan">
+              <input type="hidden" id="selectedAmount">
+              
+              <button type="button" onclick="Pricing.initiateNayaPay()" class="btn btn-primary btn-block">
+                Pay via NayaPay
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const Pricing = {
+      currentCoupon: null,
+      selectedPlan: null,
+
+      async loadPricing() {
+        const container = document.getElementById('pricingGrid');
+        try {
+          const response = await API.getProducts();
+          if (response.success) {
+            let html = '';
+            response.products.forEach(product => {
+              const discount = (product.price * product.discount / 100).toFixed(0);
+              const finalPrice = (product.price - discount).toFixed(0);
+              
+              html += `
+                <div class="pricing-card-large">
+                  <div class="card-header">
+                    <h3>${product.name}</h3>
+                    ${product.popular ? '<span class="popular-badge">POPULAR</span>' : ''}
+                  </div>
+                  <div class="card-price">
+                    <span class="price">Rs ${finalPrice}</span>
+                    <span class="original-price" style="text-decoration: line-through;">Rs ${product.price}</span>
+                  </div>
+                  <div class="card-duration">${product.duration}</div>
+                  <ul class="card-features">
+                    <li>✓ Full Dashboard</li>
+                    <li>✓ Inventory Management</li>
+                    <li>✓ Sales & POS System</li>
+                    <li>✓ Customer Database</li>
+                    <li>✓ Advanced Reports</li>
+                    <li>✓ Email Support</li>
+                  </ul>
+                  <button onclick="Pricing.selectPlan('${product.slug}', ${finalPrice}, '${product.name}')" class="btn btn-primary btn-block">
+                    Select Plan
+                  </button>
+                </div>
+              `;
+            });
+            container.innerHTML = html;
+          }
+        } catch (err) {
+          container.innerHTML = '<p class="error">Failed to load pricing information</p>';
+        }
+      },
+
+      selectPlan(slug, price, name) {
+        document.getElementById('planName').textContent = name;
+        document.getElementById('planPrice').textContent = price;
+        document.getElementById('totalPrice').textContent = price;
+        document.getElementById('selectedPlan').value = slug;
+        document.getElementById('selectedAmount').value = price;
+        document.getElementById('paymentModal').style.display = 'flex';
+      },
+
+      async validateCoupon() {
+        const code = document.getElementById('couponCode').value.trim();
+        if (!code) {
+          alert('Please enter a coupon code');
+          return;
+        }
+
+        try {
+          const response = await API.validateCoupon(code, this.selectedPlan);
+          if (response.valid) {
+            this.currentCoupon = response;
+            const discountAmount = Math.round(response.discount_amount);
+            const newTotal = parseInt(document.getElementById('totalPrice').textContent) - discountAmount;
+            
+            document.getElementById('discountRow').style.display = 'flex';
+            document.getElementById('discountAmount').textContent = `- Rs ${discountAmount}`;
+            document.getElementById('totalPrice').textContent = newTotal;
+            document.getElementById('couponMessage').innerHTML = '<p style="color: var(--green);">✓ Coupon applied!</p>';
+            document.getElementById('selectedAmount').value = newTotal;
+          } else {
+            document.getElementById('couponMessage').innerHTML = '<p style="color: var(--amber);">✗ Invalid coupon</p>';
+          }
+        } catch (err) {
+          console.error('Coupon validation error:', err);
+        }
+      },
+
+      initiateNayaPay() {
+        const form = document.getElementById('paymentForm');
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
+
+        const name = document.getElementById('buyerName').value;
+        const email = document.getElementById('buyerEmail').value;
+        const phone = document.getElementById('buyerPhone').value;
+        const amount = document.getElementById('selectedAmount').value;
+        const plan = document.getElementById('selectedPlan').value;
+
+        // Simulate payment initiation
+        alert(`Payment initiated!\n\nName: ${name}\nAmount: Rs ${amount}\n\nYou will receive payment instructions shortly.`);
+
+        // In production, this would call the backend API
+        // API.initiatePayment({ name, email, phone, amount, plan, coupon: this.currentCoupon?.code });
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      Pricing.loadPricing();
+      Auth.checkSession();
+
+      // Close modal
+      document.querySelector('.modal-close').onclick = () => {
+        document.getElementById('paymentModal').style.display = 'none';
+      };
+    });
+  </script>
+</body>
+</html>

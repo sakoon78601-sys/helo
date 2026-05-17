@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activate License - Mobile Shop Pro</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="logo">
+        <span class="logo-icon">📱</span>
+        <strong>Mobile</strong>ShopPro
+      </div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="dashboard.html" class="btn-nav" id="dashboardLink" style="display:none;">Dashboard</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Activate Section -->
+  <section class="activate-page">
+    <div class="container">
+      <div class="activate-container">
+        <h1>🔑 Activate Your License</h1>
+        <p class="subtitle">Enter your license key to get started</p>
+
+        <!-- Activation Form -->
+        <div class="activate-box">
+          <form id="activateForm">
+            <div class="form-group">
+              <label>License Key</label>
+              <input type="text" id="licenseKey" placeholder="Enter your license key (e.g., MSPO-XXXX-XXXX-XXXX)" required class="input-field input-large">
+              <small>You'll find this in your confirmation email</small>
+            </div>
+
+            <div class="form-group">
+              <label>Email Address</label>
+              <input type="email" id="activateEmail" placeholder="Registered email address" required class="input-field">
+            </div>
+
+            <button type="button" onclick="Activate.checkLicense()" class="btn btn-primary btn-block">
+              Activate License
+            </button>
+          </form>
+
+          <!-- Status Display -->
+          <div id="statusMessage"></div>
+        </div>
+
+        <!-- License Details -->
+        <div class="license-details" id="licenseDetails" style="display:none;">
+          <h2>📋 License Information</h2>
+          <div class="details-grid">
+            <div class="detail-item">
+              <span class="label">License Key</span>
+              <span class="value" id="detailKey"></span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Plan Type</span>
+              <span class="value" id="detailPlan"></span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Status</span>
+              <span class="value" id="detailStatus"></span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Activation Date</span>
+              <span class="value" id="detailActivated"></span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Expiry Date</span>
+              <span class="value" id="detailExpiry"></span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Days Remaining</span>
+              <span class="value" id="detailDays"></span>
+            </div>
+          </div>
+
+          <div class="action-buttons">
+            <a href="dashboard.html" class="btn btn-primary">Go to Dashboard</a>
+            <button onclick="Activate.reset()" class="btn btn-secondary">Activate Another License</button>
+          </div>
+        </div>
+
+        <!-- FAQ Section -->
+        <div class="faq-section">
+          <h2>❓ Frequently Asked Questions</h2>
+          
+          <div class="faq-item">
+            <h3>Where do I find my license key?</h3>
+            <p>Your license key was sent to your email when you completed your purchase. Check your confirmation email or look in your profile dashboard.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>How long is my license valid for?</h3>
+            <p>License validity depends on your plan: Starter (1 month), Professional (3 months), or Premium (1 year). You can renew anytime before expiry.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>Can I use one license on multiple devices?</h3>
+            <p>Each license is for one business location. For multiple locations, you'll need separate licenses. Contact support for volume discounts.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>What happens when my license expires?</h3>
+            <p>You'll receive renewal reminders. You can renew your license anytime. There's a grace period of 7 days after expiry before access is blocked.</p>
+          </div>
+
+          <div class="faq-item">
+            <h3>How do I renew my license?</h3>
+            <p>Visit the pricing page and select your plan. You'll receive a new license key that extends your current license.</p>
+          </div>
+        </div>
+
+        <!-- Support Section -->
+        <div class="support-section">
+          <h2>💬 Need Help?</h2>
+          <p>Can't find your license key? Having trouble activating?</p>
+          <div class="support-buttons">
+            <a href="https://wa.me/923001234567" target="_blank" class="btn btn-secondary">WhatsApp Support</a>
+            <a href="mailto:lovelykamkhani@gmail.com" class="btn btn-secondary">Email Support</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const Activate = {
+      async checkLicense() {
+        const key = document.getElementById('licenseKey').value.trim();
+        const email = document.getElementById('activateEmail').value.trim();
+        const message = document.getElementById('statusMessage');
+
+        if (!key || !email) {
+          message.innerHTML = '<p class="error">Please fill in all fields</p>';
+          return;
+        }
+
+        message.innerHTML = '<p class="loading">Checking license...</p>';
+
+        try {
+          // Simulate API call - in production, call your backend
+          const response = await API.checkLicense(key, email);
+          
+          if (response.valid) {
+            message.innerHTML = '<p class="success">✓ License activated successfully!</p>';
+            this.displayLicenseDetails(response);
+          } else {
+            message.innerHTML = '<p class="error">✗ Invalid license key or email</p>';
+          }
+        } catch (err) {
+          message.innerHTML = '<p class="error">Error checking license. Please try again.</p>';
+          console.error(err);
+        }
+      },
+
+      displayLicenseDetails(data) {
+        document.getElementById('licenseDetails').style.display = 'block';
+        document.getElementById('detailKey').textContent = data.key;
+        document.getElementById('detailPlan').textContent = data.plan;
+        document.getElementById('detailStatus').textContent = data.status || 'Active';
+        document.getElementById('detailActivated').textContent = data.activated || new Date().toLocaleDateString();
+        document.getElementById('detailExpiry').textContent = data.expiry;
+        document.getElementById('detailDays').textContent = data.days_remaining || 'Unlimited';
+
+        // Store in session
+        sessionStorage.setItem('license', JSON.stringify(data));
+      },
+
+      reset() {
+        document.getElementById('activateForm').reset();
+        document.getElementById('licenseDetails').style.display = 'none';
+        document.getElementById('statusMessage').innerHTML = '';
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      Auth.checkSession();
+    });
+  </script>
+</body>
+</html>

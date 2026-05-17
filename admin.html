@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Mobile Shop Pro</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="logo">
+        <span class="logo-icon">📱</span>
+        <strong>Mobile</strong>ShopPro Admin
+      </div>
+      <ul class="nav-links">
+        <li id="adminUser" style="color: var(--text);"></li>
+        <li><a href="#" id="logoutBtn" class="btn-nav">Logout</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Admin Panel -->
+  <section class="admin-panel">
+    <div class="container">
+      <h1>🛡️ Admin Control Panel</h1>
+
+      <!-- Tabs -->
+      <div class="admin-tabs">
+        <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-btn" data-tab="users">Users</button>
+        <button class="tab-btn" data-tab="licenses">Licenses</button>
+        <button class="tab-btn" data-tab="partners">Partners</button>
+        <button class="tab-btn" data-tab="transactions">Transactions</button>
+        <button class="tab-btn" data-tab="products">Products</button>
+      </div>
+
+      <!-- Dashboard Tab -->
+      <div id="dashboard" class="tab-content active">
+        <h2>📊 Dashboard Overview</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-content">
+              <span class="stat-label">Total Users</span>
+              <span class="stat-value" id="statUsers">0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🔑</div>
+            <div class="stat-content">
+              <span class="stat-label">Active Licenses</span>
+              <span class="stat-value" id="statLicenses">0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-content">
+              <span class="stat-label">Total Revenue</span>
+              <span class="stat-value" id="statRevenue">Rs 0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🤝</div>
+            <div class="stat-content">
+              <span class="stat-label">Active Partners</span>
+              <span class="stat-value" id="statPartners">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-section">
+          <h3>Recent Activity</h3>
+          <p class="info-text">Integration with charts coming soon. Chart library can be added (Chart.js, ApexCharts).</p>
+        </div>
+      </div>
+
+      <!-- Users Tab -->
+      <div id="users" class="tab-content">
+        <h2>👥 User Management</h2>
+        <div class="section-actions">
+          <button onclick="Admin.showAddUserForm()" class="btn btn-primary">+ Add User</button>
+          <input type="text" placeholder="Search users..." id="userSearch" class="input-search" onkeyup="Admin.searchUsers()">
+        </div>
+        <div id="usersList">
+          <p class="loading">Loading users...</p>
+        </div>
+      </div>
+
+      <!-- Licenses Tab -->
+      <div id="licenses" class="tab-content">
+        <h2>🔑 License Management</h2>
+        <div class="section-actions">
+          <button onclick="Admin.showGenerateLicenseForm()" class="btn btn-primary">+ Generate License</button>
+          <input type="text" placeholder="Search licenses..." id="licenseSearch" class="input-search" onkeyup="Admin.searchLicenses()">
+        </div>
+        <div id="licensesList">
+          <p class="loading">Loading licenses...</p>
+        </div>
+      </div>
+
+      <!-- Partners Tab -->
+      <div id="partners" class="tab-content">
+        <h2>🤝 Partner Management</h2>
+        <div class="section-actions">
+          <input type="text" placeholder="Search partners..." id="partnerSearch" class="input-search" onkeyup="Admin.searchPartners()">
+        </div>
+        <div id="partnersList">
+          <p class="loading">Loading partners...</p>
+        </div>
+      </div>
+
+      <!-- Transactions Tab -->
+      <div id="transactions" class="tab-content">
+        <h2>📝 Transactions</h2>
+        <div class="section-actions">
+          <select id="transactionFilter" onchange="Admin.filterTransactions()" class="input-field">
+            <option value="all">All Transactions</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+          </select>
+        </div>
+        <div id="transactionsList">
+          <p class="loading">Loading transactions...</p>
+        </div>
+      </div>
+
+      <!-- Products Tab -->
+      <div id="products" class="tab-content">
+        <h2>📦 Product Management</h2>
+        <div class="section-actions">
+          <button onclick="Admin.showEditProductForm()" class="btn btn-primary">+ Edit Products</button>
+        </div>
+        <div id="productsList">
+          <p class="loading">Loading products...</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal for Forms -->
+  <div id="adminModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="Admin.closeModal()">&times;</span>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const Admin = {
+      currentUser: null,
+      allUsers: [],
+      allLicenses: [],
+      allPartners: [],
+      allTransactions: [],
+
+      init() {
+        // Check admin auth
+        const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+        if (user.role !== 'admin') {
+          alert('Access denied. Admin only.');
+          window.location.href = 'index.html';
+          return;
+        }
+
+        this.currentUser = user;
+        document.getElementById('adminUser').textContent = `Admin: ${user.name}`;
+
+        this.loadDashboard();
+        this.setupTabNavigation();
+
+        document.getElementById('logoutBtn').onclick = (e) => {
+          e.preventDefault();
+          sessionStorage.removeItem('user');
+          window.location.href = 'index.html';
+        };
+      },
+
+      setupTabNavigation() {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.onclick = (e) => {
+            const tabName = e.target.dataset.tab;
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            e.target.classList.add('active');
+
+            if (tabName === 'users') this.loadUsers();
+            if (tabName === 'licenses') this.loadLicenses();
+            if (tabName === 'partners') this.loadPartners();
+            if (tabName === 'transactions') this.loadTransactions();
+            if (tabName === 'products') this.loadProducts();
+          };
+        });
+      },
+
+      async loadDashboard() {
+        try {
+          // Mock data - replace with real API calls
+          document.getElementById('statUsers').textContent = '125';
+          document.getElementById('statLicenses').textContent = '89';
+          document.getElementById('statRevenue').textContent = 'Rs 2,450,000';
+          document.getElementById('statPartners').textContent = '23';
+        } catch (err) {
+          console.error('Error loading dashboard:', err);
+        }
+      },
+
+      loadUsers() {
+        const container = document.getElementById('usersList');
+        container.innerHTML = '<p class="loading">Loading users...</p>';
+        
+        // Mock data
+        const html = `
+          <table class="table">
+            <thead><tr><th>Email</th><th>Shop Name</th><th>Joined</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>user1@email.com</td>
+                <td>Mobile Hub Karachi</td>
+                <td>2024-01-15</td>
+                <td><span class="status-badge active">Active</span></td>
+                <td><button class="btn btn-small">Edit</button> <button class="btn btn-small btn-danger">Delete</button></td>
+              </tr>
+              <tr>
+                <td>user2@email.com</td>
+                <td>Tech Retail Lahore</td>
+                <td>2024-02-10</td>
+                <td><span class="status-badge active">Active</span></td>
+                <td><button class="btn btn-small">Edit</button> <button class="btn btn-small btn-danger">Delete</button></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+        container.innerHTML = html;
+      },
+
+      loadLicenses() {
+        const container = document.getElementById('licensesList');
+        container.innerHTML = '<p class="loading">Loading licenses...</p>';
+        
+        const html = `
+          <table class="table">
+            <thead><tr><th>License Key</th><th>Plan</th><th>Email</th><th>Expires</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>MSPO-XXXX-XXXX-0001</code></td>
+                <td>Professional</td>
+                <td>user1@email.com</td>
+                <td>2024-06-15</td>
+                <td><span class="status-badge active">Active</span></td>
+                <td><button class="btn btn-small">Details</button> <button class="btn btn-small btn-secondary">Extend</button></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+        container.innerHTML = html;
+      },
+
+      loadPartners() {
+        const container = document.getElementById('partnersList');
+        container.innerHTML = '<p class="loading">Loading partners...</p>';
+        
+        const html = `
+          <table class="table">
+            <thead><tr><th>Name</th><th>Email</th><th>Referrals</th><th>Earnings</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Partner Name</td>
+                <td>partner@email.com</td>
+                <td>12</td>
+                <td>Rs 42,000</td>
+                <td><span class="status-badge active">Active</span></td>
+                <td><button class="btn btn-small">Details</button></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+        container.innerHTML = html;
+      },
+
+      loadTransactions() {
+        const container = document.getElementById('transactionsList');
+        container.innerHTML = '<p class="loading">Loading transactions...</p>';
+        
+        const html = `
+          <table class="table">
+            <thead><tr><th>Date</th><th>User</th><th>Plan</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>2024-05-15</td>
+                <td>user1@email.com</td>
+                <td>Professional</td>
+                <td>Rs 3,500</td>
+                <td><span class="status-badge completed">Completed</span></td>
+                <td><button class="btn btn-small">Details</button></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+        container.innerHTML = html;
+      },
+
+      loadProducts() {
+        const container = document.getElementById('productsList');
+        container.innerHTML = '<p class="loading">Loading products...</p>';
+        
+        const html = `
+          <table class="table">
+            <thead><tr><th>Product</th><th>Price</th><th>Duration</th><th>Discount</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Starter</td>
+                <td>Rs 1,500</td>
+                <td>1 Month</td>
+                <td>15%</td>
+                <td><button class="btn btn-small" onclick="Admin.showEditProductForm('starter')">Edit</button></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+        container.innerHTML = html;
+      },
+
+      searchUsers() {
+        const query = document.getElementById('userSearch').value.toLowerCase();
+        // Implement search logic
+      },
+
+      searchLicenses() {
+        const query = document.getElementById('licenseSearch').value.toLowerCase();
+        // Implement search logic
+      },
+
+      searchPartners() {
+        const query = document.getElementById('partnerSearch').value.toLowerCase();
+        // Implement search logic
+      },
+
+      filterTransactions() {
+        const filter = document.getElementById('transactionFilter').value;
+        // Implement filter logic
+      },
+
+      showAddUserForm() {
+        const modal = document.getElementById('adminModal');
+        modal.querySelector('#modalBody').innerHTML = `
+          <h2>Add New User</h2>
+          <form>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" class="input-field" required>
+            </div>
+            <div class="form-group">
+              <label>Shop Name</label>
+              <input type="text" class="input-field" required>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="Admin.closeModal()">Create User</button>
+          </form>
+        `;
+        modal.style.display = 'flex';
+      },
+
+      showGenerateLicenseForm() {
+        const modal = document.getElementById('adminModal');
+        modal.querySelector('#modalBody').innerHTML = `
+          <h2>Generate License</h2>
+          <form>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" class="input-field" required>
+            </div>
+            <div class="form-group">
+              <label>Plan</label>
+              <select class="input-field" required>
+                <option>Starter</option>
+                <option>Professional</option>
+                <option>Premium</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="Admin.closeModal()">Generate License</button>
+          </form>
+        `;
+        modal.style.display = 'flex';
+      },
+
+      showEditProductForm(product) {
+        const modal = document.getElementById('adminModal');
+        modal.querySelector('#modalBody').innerHTML = `
+          <h2>Edit Product: ${product || 'New Product'}</h2>
+          <form>
+            <div class="form-group">
+              <label>Product Name</label>
+              <input type="text" class="input-field" value="${product || ''}" required>
+            </div>
+            <div class="form-group">
+              <label>Price (PKR)</label>
+              <input type="number" class="input-field" required>
+            </div>
+            <div class="form-group">
+              <label>Duration</label>
+              <input type="text" class="input-field" required>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="Admin.closeModal()">Save Product</button>
+          </form>
+        `;
+        modal.style.display = 'flex';
+      },
+
+      closeModal() {
+        document.getElementById('adminModal').style.display = 'none';
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      Admin.init();
+    });
+  </script>
+</body>
+</html>
